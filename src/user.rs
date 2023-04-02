@@ -1,4 +1,4 @@
-use crate::tweet;
+use crate::post;
 use std::io::{Result};
 
 pub struct User {
@@ -11,7 +11,8 @@ pub struct User {
 }
 
 impl User {
-    fn tweets(&self) -> Result<Option<tweet::Tweet>> {
-        return Ok(Some(tweet::Tweet::new(String::from("template comment"), 1)));
+    fn posts(&self) -> Result<Option<post::Post>> {
+        return Ok(Some(post::Post::new(String::from("template comment"), 1)));
     }
 }
+

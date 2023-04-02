@@ -1,4 +1,4 @@
-pub struct Tweet {
+pub struct Post {
     date: String,
     content: String,
     reactions: i32,
@@ -7,9 +7,9 @@ pub struct Tweet {
     user_id: i32,
 }
 
-impl Default for Tweet {
+impl Default for Post {
     fn default() -> Self {
-        Tweet {
+        Post {
             date: String::from("today"),
             content: String::from(""),
             reactions: 0,
@@ -20,12 +20,12 @@ impl Default for Tweet {
     }
 }
 
-impl Tweet {
-    pub fn new(content: String, user_id: i32) -> Tweet {
-        Tweet {
+impl Post {
+    pub fn new(content: String, user_id: i32) -> Post {
+        Post {
             content: content,
             user_id: user_id,
-            ..Tweet::default()
+            ..Post::default()
         }
     }
 }
