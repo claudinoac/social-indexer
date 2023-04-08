@@ -1,65 +1,77 @@
 use std::fs::{File, OpenOptions};
-use std::path::{Path, PathBuf};
+use std::path::{PathBuf};
 use std::io::{Read, Write};
 use std::io::Result;
+use crate::post::{Post};
+use crate::user::{User};
+extern crate bytecheck;
+extern crate rkyv;
+use rkyv::{Archive, Deserialize, Serialize};
 
-pub struct Row {}
-
-impl Row {
-    fn new() -> Row {
-        Row {}
-    }
-}
 
 pub struct Table {
     name: String,
-    rows: Vec<Row>,
     file: File,
+    file_path: String,
+    item_type: String
+}
+
+#[derive(Archive, Deserialize, Serialize, Debug, PartialEq)]
+pub enum Row {
+    User(User),
+    Post(Post),
 }
 
 impl Table {
-    pub fn new<P: AsRef<Path>>(name: &str, path: P) -> Result<Table> {
+    pub fn new(name: &str, path: &str, item_type: &str) -> Result<Self> {
+        let file_path = PathBuf::from(path);
         let file = OpenOptions::new()
             .read(true)
             .write(true)
             .create(true)
-            .open(&path)?;
+            .open(&file_path)?;
 
-        let rows = vec![];
-
-        Ok(Table {
+        Ok(Self {
             name: name.to_string(),
-            rows,
             file,
+            file_path: path.to_string(),
+            item_type: item_type.to_string(),
         })
     }
 
-    fn insert(&mut self, row: Row) -> Result<()> {
-        // TODO
-        Ok(())
+    pub fn insert<'a, 'b>(&'a mut self, row: &'b Row) -> Result<&'b Row> {
+        let mut file = Table::open(&self.name, &self.file_path, &self.item_type, true); 
+        let bytes = rkyv::to_bytes::<_, 256>(row).unwrap();
+        let _ = file.write_all(&bytes);
+        let new_row = row.clone();
+        return Ok(new_row);
     }
 
-    fn search(&self, id: u32) -> Result<Option<Row>> {
-        // TODO
-        Ok(None)
+    pub fn get<T>(&mut self, index: i32) -> Result<Row> {
+        let mut file = Table::open(&self.name, &self.file_path, &self.item_type, false); 
+        // let bytes =  
+        // let deserialized = rkyv::from_bytes::<Row>(&bytes); TODO: load a single node from memory
+        match self.item_type.as_str() {
+            "user" => Ok(Row::User(User::default())),
+            "post" => Ok(Row::Post(Post::default())),
+            _ => panic!("Unrecognized type!"),
+        }
     }
 
-    fn save(&mut self) -> Result<()> {
-        let data = &self.rows;
-        self.file.set_len(0)?;
-        // self.file.write_all(data.as_bytes())?;
-        self.file.sync_all()?;
-        Ok(())
+    pub fn save(&mut self, row: Row) -> Result<Row> {
+        return Ok(Row::User(User::default()));
     }
 
-    fn load<P: AsRef<Path>>(path: P) -> Result<Table> {
-        let mut file = File::open(&path)?;
-        let rows = vec![];
-
-        Ok(Table {
-            name: String::new(),
-            rows,
-            file,
-        })
+    pub fn open(name: &str, path: &str, item_type: &str, append: bool) -> File {
+        let file_path = PathBuf::from(path);
+        let file = OpenOptions::new()
+                        .read(true)
+                        .write(true)
+                        .append(append)
+                        .open(&file_path);
+        match file {
+            Ok(file) => file, 
+            Err(error) => panic!("Cannot load file for table {:} {:}", name, error)
+        }
     }
 }

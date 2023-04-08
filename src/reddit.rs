@@ -2,9 +2,12 @@ use roux::{Reddit};
 use reqwest::blocking::{Client as RequestClient};
 use serde::{Deserialize, Serialize};
 use std::env;
+use crate::post::{Post};
+extern crate chrono;
+use chrono::{Utc, TimeZone};
 
 
-#[derive(Serialize, Deserialize, Debug)]
+#[derive(Serialize, Deserialize, Debug, Clone)]
 pub struct RedditPost {
     selftext: String,
     ups: i32,
@@ -12,6 +15,21 @@ pub struct RedditPost {
     author: String,
     num_comments: i32,
     url: String,
+    created: f64
+}
+
+impl RedditPost {
+    pub fn to_normalized(&self) -> Post {
+        return Post {
+            content: self.selftext.clone(),
+            reactions: self.ups + (self.ups - self.score),
+            comments: self.num_comments,
+            shares: 0,
+            url: self.url.clone(),
+            username: self.author.clone(),
+            date: Utc::timestamp_millis_opt(&Utc, self.created as i64).unwrap().format("%Y-%m-%d %H:%M:%S").to_string(),
+        } 
+    }
 }
 
 
@@ -36,17 +54,17 @@ pub struct RedditUserResponse {
 
 #[derive(Serialize, Deserialize, Debug)]
 pub struct RedditPostData {
-    data: RedditPost
+    pub data: RedditPost
 }
 
 #[derive(Serialize, Deserialize, Debug)]
 pub struct RedditListResponseData {
-    children: Vec<RedditPostData>
+    pub children: Vec<RedditPostData>
 }
 
 #[derive(Serialize, Deserialize, Debug)]
 pub struct RedditPostResponse {
-    data: RedditListResponseData,
+    pub data: RedditListResponseData,
 }
 
 pub fn get_reddit_client(username: &str, password: &str) -> RequestClient {
@@ -61,8 +79,9 @@ pub fn get_reddit_client(username: &str, password: &str) -> RequestClient {
     .client;
 }
 
-pub fn get_reddit_user(client: &RequestClient, username: String) -> RedditUserResponse {
-    let response = client.get("https://reddit.com/u/claudinoac/about.json").send().unwrap();
+pub fn get_reddit_user(client: &RequestClient, username: &str) -> RedditUserResponse {
+    let username = username.to_string();
+    let response = client.get(format!("https://reddit.com/u/{username}/about.json")).send().unwrap();
     let response_data: RedditUserResponse;
     match response.status() {
         reqwest::StatusCode::OK => {
@@ -83,8 +102,10 @@ pub fn get_reddit_user(client: &RequestClient, username: String) -> RedditUserRe
 }
 
 
-pub fn search_reddit_posts(client: &RequestClient, query: String) -> RedditPostResponse {
-    let url = format!("https://reddit.com/search.json?q={query}&limit=10");
+pub fn search_reddit_posts(client: &RequestClient, query: &str, limit: Option<i32>) -> RedditPostResponse {
+    let limit = limit.unwrap_or(10);
+    let query = query.to_string();
+    let url = format!("https://reddit.com/search.json?q={query}&limit={limit}");
     let response = client.get(url).send().unwrap();
     let response_data: RedditPostResponse;
     match response.status() {
@@ -103,7 +124,6 @@ pub fn search_reddit_posts(client: &RequestClient, query: String) -> RedditPostR
         }
     };
     return response_data;
-    
 }
 
 

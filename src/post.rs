@@ -1,10 +1,17 @@
+extern crate bytecheck;
+extern crate rkyv;
+use rkyv::{Archive, Deserialize, Serialize};
+use serde::{Deserialize as JSONDeserialize, Serialize as JSONSerialize};
+
+#[derive(Archive, Deserialize, Serialize, Debug, PartialEq, JSONSerialize, JSONDeserialize)]
 pub struct Post {
-    date: String,
-    content: String,
-    reactions: i32,
-    shares: i32,
-    comments: i32,
-    user_id: i32,
+    pub date: String,
+    pub content: String,
+    pub reactions: i32,
+    pub shares: i32,
+    pub comments: i32,
+    pub username: String,
+    pub url: String,
 }
 
 impl Default for Post {
@@ -12,19 +19,19 @@ impl Default for Post {
         Post {
             date: String::from("today"),
             content: String::from(""),
+            url: String::from(""),
+            username: String::from(""),
             reactions: 0,
             shares: 0,
             comments: 0,
-            user_id: 0
         }
     }
 }
 
 impl Post {
-    pub fn new(content: String, user_id: i32) -> Post {
+    pub fn new(content: String, username: String) -> Post {
         Post {
             content: content,
-            user_id: user_id,
             ..Post::default()
         }
     }
