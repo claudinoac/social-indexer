@@ -1,12 +1,12 @@
+use std::io::prelude::*;
 use std::fs::{File, OpenOptions};
 use std::path::{PathBuf};
-use std::io::{Read, Write};
-use std::io::Result;
-use crate::post::{Post};
+use std::io::{Cursor, Read, Write, SeekFrom, Result, Error, ErrorKind, BufReader};
 use crate::user::{User};
+use crate::post::{Post};
 extern crate bytecheck;
 extern crate rkyv;
-use rkyv::{Archive, Deserialize, Serialize};
+use serde::{Deserialize, Serialize};
 
 
 pub struct Table {
@@ -16,10 +16,29 @@ pub struct Table {
     item_type: String
 }
 
-#[derive(Archive, Deserialize, Serialize, Debug, PartialEq)]
+#[derive(Deserialize, Serialize, Debug)]
 pub enum Row {
     User(User),
     Post(Post),
+}
+
+impl Row {
+    pub fn from_bytes(bytes: &[u8], item_type: &String) -> (Self, u64) {
+        return match item_type.as_str() {
+            "post" => {
+                let (entry, cursor) = Post::from_bytes(bytes);
+                return (Row::Post(entry), cursor);
+            },
+            _ => panic!("Cannot decode binary data for {:}", item_type)
+        };
+    }
+
+    pub fn to_bytes(&self) -> Vec<u8> {
+        return match self {
+            Row::Post(row) => row.to_bytes().into_inner(),
+            _ => panic!("well")
+        };
+    }
 }
 
 impl Table {
@@ -30,7 +49,7 @@ impl Table {
             .write(true)
             .create(true)
             .open(&file_path)?;
-
+    
         Ok(Self {
             name: name.to_string(),
             file,
@@ -41,25 +60,33 @@ impl Table {
 
     pub fn insert<'a, 'b>(&'a mut self, row: &'b Row) -> Result<&'b Row> {
         let mut file = Table::open(&self.name, &self.file_path, &self.item_type, true); 
-        let bytes = rkyv::to_bytes::<_, 256>(row).unwrap();
+        let bytes = row.to_bytes();
+        println!("Writing {:} bytes", bytes.len());
         let _ = file.write_all(&bytes);
         let new_row = row.clone();
         return Ok(new_row);
     }
 
-    pub fn get<T>(&mut self, index: i32) -> Result<Row> {
+    pub fn get(&mut self, index: i32) -> Result<Row> {
         let mut file = Table::open(&self.name, &self.file_path, &self.item_type, false); 
-        // let bytes =  
-        // let deserialized = rkyv::from_bytes::<Row>(&bytes); TODO: load a single node from memory
-        match self.item_type.as_str() {
-            "user" => Ok(Row::User(User::default())),
-            "post" => Ok(Row::Post(Post::default())),
-            _ => panic!("Unrecognized type!"),
+        let mut buffer = [0u8;  2000];
+        let mut reader = BufReader::new(file);
+        reader.seek(SeekFrom::Start(0))?;
+        let mut idx = 1;
+        while let Ok(bytes_read) = reader.read(&mut buffer) {
+            if bytes_read == 0 {
+                break;
+            }
+            let (entry, cursor) = Row::from_bytes(&buffer, &self.item_type);
+            if idx == index {
+                return Ok(entry);
+            }
+            idx += 1;
+            buffer.iter_mut().for_each(|b| *b = 0);
+            let buffer_offset = cursor as i64 - bytes_read as i64;
+            reader.seek_relative(buffer_offset)?;
         }
-    }
-
-    pub fn save(&mut self, row: Row) -> Result<Row> {
-        return Ok(Row::User(User::default()));
+        Err(Error::new(ErrorKind::Other, "not found."))
     }
 
     pub fn open(name: &str, path: &str, item_type: &str, append: bool) -> File {

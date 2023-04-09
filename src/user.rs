@@ -1,12 +1,9 @@
 use crate::post;
+use serde::{Serialize, Deserialize};
 use std::io::{Result};
-extern crate bytecheck;
-extern crate rkyv;
-use rkyv::{Archive, Deserialize, Serialize};
 
 
-
-#[derive(Archive, Deserialize, Serialize, Debug, PartialEq)]
+#[derive(Deserialize, Serialize, Debug)]
 pub struct User {
     id: i32,
     username: String,

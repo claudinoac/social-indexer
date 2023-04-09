@@ -19,7 +19,9 @@ pub struct RedditPost {
 }
 
 impl RedditPost {
-    pub fn to_normalized(&self) -> Post {
+    pub fn to_normalized(&mut self) -> Post {
+        self.selftext.truncate(1500);
+        println!("{:}", self.created);
         return Post {
             content: self.selftext.clone(),
             reactions: self.ups + (self.ups - self.score),
@@ -27,7 +29,7 @@ impl RedditPost {
             shares: 0,
             url: self.url.clone(),
             username: self.author.clone(),
-            date: Utc::timestamp_millis_opt(&Utc, self.created as i64).unwrap().format("%Y-%m-%d %H:%M:%S").to_string(),
+            date: Utc.timestamp(self.created as i64, 0).format("%Y-%m-%d %H:%M:%S").to_string(),
         } 
     }
 }
