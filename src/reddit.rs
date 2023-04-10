@@ -72,8 +72,8 @@ pub struct RedditPostResponse {
 pub fn get_reddit_client(username: &str, password: &str) -> RequestClient {
     return Reddit::new(
         "Social Indexer (by /u/claudinoac)",
-        &env::var("REDDIT_APP_ID").unwrap(),
-        &env::var("REDDIT_APP_SECRET").unwrap(),
+        "VPBy1AG-OHZwte2v4aVYmw",
+        "LbFVIgzQTQnfDSOM14zYKG4JRDy1Iw",
     ).username(username)
     .password(password)
     .login()

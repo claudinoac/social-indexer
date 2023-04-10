@@ -74,11 +74,14 @@ fn update_entry(entries_file: &mut File, id: u32, name: &str, description: &str)
     let mut buffer = Vec::new();
     let mut found = false;
     while let Ok(bytes_read) = entries_file.read(&mut buffer) {
-        if bytes_read == 0 {
-            break;
+            if bytes_read == 0 {
+                break;
+            }
+            let entry = Entry::from_bytes(&buffer);
+            if entry.id == id {
+                let updated_entry = Entry { id, name: name.to_string(), description: description.to_string() };
+                let bytes = updated_entry.to_bytes();
+                entries_file.seek
+            }
         }
-        let entry = Entry::from_bytes(&buffer);
-        if entry.id == id {
-            let updated_entry = Entry { id, name: name.to_string(), description: description.to_string() };
-            let bytes = updated_entry.to_bytes();
-            entries_file.seek
+    }
