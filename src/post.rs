@@ -32,16 +32,14 @@ impl Default for Post {
 impl Post {
     pub fn new(content: String, username: String) -> Post {
         Post {
-            content: content,
+            content,
+            username,
             ..Post::default()
         }
     }
 
-    pub fn from_bytes(bytes: &[u8]) -> (Self, u64) {
+    pub fn from_bytes(bytes: &[u8]) -> (Post, u64) {
         let mut cursor = Cursor::new(bytes);
-        let reactions = cursor.read_u32::<LittleEndian>().unwrap();
-        let shares = cursor.read_u32::<LittleEndian>().unwrap();
-        let comments = cursor.read_u32::<LittleEndian>().unwrap();
 
         let date_len = cursor.read_u32::<LittleEndian>().unwrap();
         let mut date_buffer = vec![0; date_len as usize];
@@ -63,6 +61,10 @@ impl Post {
         cursor.read_exact(&mut user_buffer).unwrap();
         let username = String::from_utf8(user_buffer).unwrap();
 
+        let reactions = cursor.read_u32::<LittleEndian>().unwrap();
+        let shares = cursor.read_u32::<LittleEndian>().unwrap();
+        let comments = cursor.read_u32::<LittleEndian>().unwrap();
+
         return (Post {
             reactions: reactions as i32,
             shares: shares as i32,
@@ -76,17 +78,25 @@ impl Post {
 
     pub fn to_bytes(&self) -> Cursor<Vec<u8>> {
         let mut buffer = Cursor::new(Vec::new());
+        let date_bytes = self.date.as_bytes(); 
+        buffer.write_u32::<LittleEndian>(date_bytes.len() as u32).unwrap();
+        buffer.write_all(date_bytes).unwrap();
+
+        let content_bytes = self.content.as_bytes();
+        buffer.write_u32::<LittleEndian>(content_bytes.len() as u32).unwrap();
+        buffer.write_all(content_bytes).unwrap();
+
+        let url_bytes = self.url.as_bytes();
+        buffer.write_u32::<LittleEndian>(url_bytes.len() as u32).unwrap();
+        buffer.write_all(url_bytes).unwrap();
+
+        let username_bytes = self.username.as_bytes();
+        buffer.write_u32::<LittleEndian>(username_bytes.len() as u32).unwrap();
+        buffer.write_all(username_bytes).unwrap();
+
         buffer.write_u32::<LittleEndian>(self.reactions as u32).unwrap();
         buffer.write_u32::<LittleEndian>(self.shares as u32).unwrap();
         buffer.write_u32::<LittleEndian>(self.comments as u32).unwrap();
-        buffer.write_u32::<LittleEndian>(self.date.len() as u32).unwrap();
-        buffer.write_all(self.date.as_bytes()).unwrap();
-        buffer.write_u32::<LittleEndian>(self.content.len() as u32).unwrap();
-        buffer.write_all(self.content.as_bytes()).unwrap();
-        buffer.write_u32::<LittleEndian>(self.url.len() as u32).unwrap();
-        buffer.write_all(self.url.as_bytes()).unwrap();
-        buffer.write_u32::<LittleEndian>(self.username.len() as u32).unwrap();
-        buffer.write_all(self.username.as_bytes()).unwrap();
         buffer
     }
 }

@@ -7,6 +7,7 @@ use crate::post::{Post};
 extern crate bytecheck;
 extern crate rkyv;
 use serde::{Deserialize, Serialize};
+use byteorder::{ReadBytesExt};
 
 
 pub struct Table {
@@ -35,7 +36,7 @@ impl Row {
 
     pub fn to_bytes(&self) -> Vec<u8> {
         return match self {
-            Row::Post(row) => row.to_bytes().into_inner(),
+            Row::Post(row) => row.to_bytes().into_inner().to_vec(),
             _ => panic!("well")
         };
     }
@@ -58,17 +59,16 @@ impl Table {
         })
     }
 
-    pub fn insert<'a, 'b>(&'a mut self, row: &'b Row) -> Result<&'b Row> {
-        let mut file = Table::open(&self.name, &self.file_path, &self.item_type, true); 
+    pub fn insert<'a, 'b>(&'a mut self, row: &'b Row) -> Result<usize> {
+        let mut file = Table::open(&self.name, &self.file_path, &self.item_type, true, true); 
         let bytes = row.to_bytes();
         println!("Writing {:} bytes", bytes.len());
         let _ = file.write_all(&bytes);
-        let new_row = row.clone();
-        return Ok(new_row);
+        return Ok(bytes.len());
     }
 
     pub fn get(&mut self, index: i32) -> Result<Row> {
-        let mut file = Table::open(&self.name, &self.file_path, &self.item_type, false); 
+        let mut file = Table::open(&self.name, &self.file_path, &self.item_type, false, false); 
         let mut buffer = [0u8;  2000];
         let mut reader = BufReader::new(file);
         reader.seek(SeekFrom::Start(0))?;
@@ -89,11 +89,41 @@ impl Table {
         Err(Error::new(ErrorKind::Other, "not found."))
     }
 
-    pub fn open(name: &str, path: &str, item_type: &str, append: bool) -> File {
+    pub fn all(&mut self) -> Result<Vec<Row>> {
+        let mut file = Table::open(&self.name, &self.file_path, &self.item_type, false, false); 
+        println!("File size: {:}", file.metadata().unwrap().len());
+        let mut buffer = [0u8;  2000];
+        let mut reader = BufReader::new(file);
+        let mut entries: Vec<Row> = Vec::new();
+        let mut buffer_offset: i64 = 0;
+        reader.seek(SeekFrom::Start(0))?;
+        while let Ok(bytes_read) = reader.read(&mut buffer) {
+            println!("Bytes read: {:}", bytes_read);
+            if bytes_read == 0 {
+                break;
+            }
+            let (entry, cursor) = Row::from_bytes(&buffer, &self.item_type);
+            entries.push(entry);
+            buffer.iter_mut().for_each(|b| *b = 0);
+            buffer_offset = bytes_read as i64 - cursor as i64;
+            println!("buffer_offset: {:}", buffer_offset);
+            if buffer_offset > 0 {
+                let current_position = reader.stream_position()?;
+                reader.seek(SeekFrom::Start(current_position - buffer_offset as u64))?;
+            } else {
+                break
+            }
+            println!("Cursor position: {:}", reader.stream_position()?);
+        }
+        println!("Loaded {:} entries", entries.len());
+        return Ok(entries); 
+    }
+
+    pub fn open(name: &str, path: &str, item_type: &str, append: bool, write: bool) -> File {
         let file_path = PathBuf::from(path);
         let file = OpenOptions::new()
                         .read(true)
-                        .write(true)
+                        .write(write)
                         .append(append)
                         .open(&file_path);
         match file {

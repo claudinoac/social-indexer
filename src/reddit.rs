@@ -29,7 +29,7 @@ impl RedditPost {
             shares: 0,
             url: self.url.clone(),
             username: self.author.clone(),
-            date: Utc.timestamp(self.created as i64, 0).format("%Y-%m-%d %H:%M:%S").to_string(),
+            date: Utc.timestamp(self.created as i64, 0).format("%Y-%m-%d %H:%M").to_string(),
         } 
     }
 }
