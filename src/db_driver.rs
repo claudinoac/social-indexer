@@ -29,17 +29,23 @@ impl Row {
             "post" => {
                 let (entry, cursor) = Post::from_bytes(bytes);
                 return (Row::Post(entry), cursor);
+            }, 
+            "user" => {
+                let (entry, cursor) = User::from_bytes(bytes);
+                return (Row::User(entry), cursor);
             },
             _ => panic!("Cannot decode binary data for {:}", item_type)
         };
     }
 
     pub fn to_bytes(&self) -> Vec<u8> {
-        return match self {
-            Row::Post(row) => row.to_bytes().into_inner().to_vec(),
-            _ => panic!("well")
-        };
+            return match self {
+                Row::User(row) => row.to_bytes().into_inner().to_vec(),
+                Row::Post(row) => row.to_bytes().into_inner().to_vec(),
+                _ => panic!("well")
+            };
     }
+
 }
 
 impl Table {

@@ -13,6 +13,9 @@ use db_driver::{Row};
 use dialoguer::console::{Style};
 use dialoguer::{theme::ColorfulTheme, Confirm, Input, Select};
 
+use crate::reddit::RedditUser;
+use crate::user::User;
+
 
 
 
@@ -47,21 +50,30 @@ fn search_reddit_posts() -> IOResult<()> {
         .default(100)
         .interact()?;
 
-    let client = reddit::get_reddit_client("---- reddit username ---- ", " ---- reddit password -----");
+    let client = reddit::get_reddit_client("ArturB32", "5A6z202@");
     let reddituser = reddit::get_reddit_user(&client, "claudinoac");
     let redditposts = reddit::search_reddit_posts(&client, &topic, Some(num_entries));
-    let mut table = db_driver::Table::new("posts_table", "./posts_table.db", "post").unwrap();
+    let mut posts_table = db_driver::Table::new("posts_table", "./posts_table.db", "post").unwrap();
+    let mut users_table = db_driver::Table::new("users_Table", "./users_Table.db", "user").unwrap();
     for mut reddit_post in redditposts.data.children {
         let post = RedditPost::to_normalized(&mut reddit_post.data);
-        // let reddituser = reddit::get_reddit_user(&client, &post.username);
+        let mut reddituser = reddit::get_reddit_user(&client, &post.username);
+        let user: User = RedditUser::to_normalized(&mut reddituser.data);
+        println!("{:}", serde_json::to_string_pretty(&user).unwrap());
+        users_table.insert(&&db_driver::Row::User(user))?;
         println!("{:}", serde_json::to_string_pretty(&post).unwrap());
-        table.insert(&db_driver::Row::Post(post))?;
+        posts_table.insert(&db_driver::Row::Post(post))?;
     }
+    
     Ok(())
 }
 
 fn list_all_users() {
-    
+    let mut table = db_driver::Table::new("users_table", "./users_Table.db", "user").unwrap();
+    let entries = table.all();
+    for item in entries {
+        println!("{:}", serde_json::to_string_pretty(&item).unwrap());
+    }
 }
 
 

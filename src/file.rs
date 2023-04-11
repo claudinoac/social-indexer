@@ -81,4 +81,4 @@ fn update_entry(entries_file: &mut File, id: u32, name: &str, description: &str)
         if entry.id == id {
             let updated_entry = Entry { id, name: name.to_string(), description: description.to_string() };
             let bytes = updated_entry.to_bytes();
-            entries_file.seek
+            entries_file.seek}}}

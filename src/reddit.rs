@@ -2,7 +2,7 @@ use roux::{Reddit};
 use reqwest::blocking::{Client as RequestClient};
 use serde::{Deserialize, Serialize};
 use std::env;
-use crate::post::{Post};
+use crate::{post::{Post}, user::User};
 extern crate chrono;
 use chrono::{Utc, TimeZone};
 
@@ -46,6 +46,19 @@ impl RedditPost {
     }
 }
 
+impl RedditUser {
+    pub fn to_normalized(&mut self) -> (User) {
+        println!("{:}", self.created);
+        return User {
+            id: 0,
+            username: self.name.clone(),
+            created_at: self.created.to_string(),
+            followers: self.subreddit.subscribers,
+            following: 0,
+            description: self.subreddit.public_description.clone()
+        } 
+    }
+}
 
 #[derive(Serialize, Deserialize, Debug)]
 pub struct RedditUser {
@@ -63,7 +76,7 @@ pub struct RedditUserSubreddit {
 
 #[derive(Serialize, Deserialize, Debug)]
 pub struct RedditUserResponse {
-    data: RedditUser,
+    pub data: RedditUser,
 }
 
 #[derive(Serialize, Deserialize, Debug)]
@@ -84,8 +97,8 @@ pub struct RedditPostResponse {
 pub fn get_reddit_client(username: &str, password: &str) -> RequestClient {
     return Reddit::new(
         "Social Indexer (by /u/claudinoac)",
-        &env::var("REDDIT_APP_ID").unwrap(),
-        &env::var("REDDIT_APP_SECRET").unwrap(),
+        "VPBy1AG-OHZwte2v4aVYmw",
+        "LbFVIgzQTQnfDSOM14zYKG4JRDy1Iw"
     ).username(username)
     .password(password)
     .login()

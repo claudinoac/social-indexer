@@ -1,4 +1,5 @@
 use crate::post;
+use crate::reddit::RedditUser;
 use serde::{Serialize, Deserialize};
 use byteorder::{LittleEndian, WriteBytesExt, ReadBytesExt};
 use std::io::{Cursor, Write, Read};
@@ -7,13 +8,13 @@ use std::io::{Result};
 
 #[derive(Deserialize, Serialize, Debug)]
 pub struct User {
-    id: i32,
-    username: String,
-    created_at: String,
-    followers: i32,
-    following: i32,
-    description: String
-}
+    pub id: i32,
+    pub username: String,
+    pub created_at: String,
+    pub followers: i32,
+    pub following: i32,
+    pub description: String
+} 
 
 impl Default for User {
     fn default() -> Self {
