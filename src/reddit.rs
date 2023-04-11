@@ -10,6 +10,8 @@ use chrono::{Utc, TimeZone};
 #[derive(Serialize, Deserialize, Debug, Clone)]
 pub struct RedditPost {
     selftext: String,
+    title: String,
+    name: String,
     ups: i32,
     score: i32,
     author: String,
@@ -20,16 +22,26 @@ pub struct RedditPost {
 
 impl RedditPost {
     pub fn to_normalized(&mut self) -> Post {
-        self.selftext.truncate(1500);
         println!("{:}", self.created);
+        let mut content;
+        if self.url.contains("comments") {
+            content = self.title.clone();
+        } else {
+            self.selftext.truncate(1500);
+            content = self.selftext.clone();
+        }
+        if content.len() == 0 {
+            content = self.title.clone();
+        }
         return Post {
-            content: self.selftext.clone(),
             reactions: self.ups + (self.ups - self.score),
             comments: self.num_comments,
             shares: 0,
             url: self.url.clone(),
             username: self.author.clone(),
+            source_id: self.name.clone(),
             date: Utc.timestamp(self.created as i64, 0).format("%Y-%m-%d %H:%M").to_string(),
+            content,
         } 
     }
 }
@@ -107,7 +119,7 @@ pub fn get_reddit_user(client: &RequestClient, username: &str) -> RedditUserResp
 pub fn search_reddit_posts(client: &RequestClient, query: &str, limit: Option<i32>) -> RedditPostResponse {
     let limit = limit.unwrap_or(10);
     let query = query.to_string();
-    let url = format!("https://reddit.com/search.json?q={query}&limit={limit}");
+    let url = format!("https://reddit.com/search.json?q={query}&limit={limit}&type=link");
     let response = client.get(url).send().unwrap();
     let response_data: RedditPostResponse;
     match response.status() {

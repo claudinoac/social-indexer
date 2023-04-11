@@ -8,6 +8,7 @@ use std::io::{Cursor, Write, Read};
 pub struct Post {
     pub date: String,
     pub content: String,
+    pub source_id: String,
     pub reactions: i32,
     pub shares: i32,
     pub comments: i32,
@@ -20,6 +21,7 @@ impl Default for Post {
         Post {
             date: String::from("today"),
             content: String::from(""),
+            source_id: String::from("abcd"),
             url: String::from(""),
             username: String::from(""),
             reactions: 0,
@@ -46,6 +48,11 @@ impl Post {
         cursor.read_exact(&mut date_buffer).unwrap();
         let date = String::from_utf8(date_buffer).unwrap();
 
+        let source_id_len = cursor.read_u32::<LittleEndian>().unwrap();
+        let mut source_id_buffer = vec![0; source_id_len as usize];
+        cursor.read_exact(&mut source_id_buffer).unwrap();
+        let source_id = String::from_utf8(source_id_buffer).unwrap();
+
         let content_len = cursor.read_u32::<LittleEndian>().unwrap();
         let mut content_buffer = vec![0; content_len as usize];
         cursor.read_exact(&mut content_buffer).unwrap();
@@ -70,6 +77,7 @@ impl Post {
             shares: shares as i32,
             comments: comments as i32,
             date,
+            source_id,
             content,
             url,
             username,
@@ -81,6 +89,10 @@ impl Post {
         let date_bytes = self.date.as_bytes(); 
         buffer.write_u32::<LittleEndian>(date_bytes.len() as u32).unwrap();
         buffer.write_all(date_bytes).unwrap();
+
+        let source_id_bytes = self.source_id.as_bytes();
+        buffer.write_u32::<LittleEndian>(source_id_bytes.len() as u32).unwrap();
+        buffer.write_all(source_id_bytes).unwrap();
 
         let content_bytes = self.content.as_bytes();
         buffer.write_u32::<LittleEndian>(content_bytes.len() as u32).unwrap();
