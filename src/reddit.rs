@@ -52,7 +52,7 @@ impl RedditUser {
         return User {
             id: 0,
             username: self.name.clone(),
-            created_at: self.created.to_string(),
+            created_at: Utc.timestamp(self.created as i64, 0).format("%Y-%m-%d %H:%M").to_string(),
             followers: self.subreddit.subscribers,
             following: 0,
             description: self.subreddit.public_description.clone()
