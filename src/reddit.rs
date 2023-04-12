@@ -5,6 +5,7 @@ use std::env;
 use crate::{post::{Post}, user::User};
 extern crate chrono;
 use chrono::{Utc, TimeZone};
+use std::io::{Result};
 
 
 #[derive(Serialize, Deserialize, Debug, Clone)]
@@ -47,28 +48,30 @@ impl RedditPost {
 }
 
 impl RedditUser {
-    pub fn to_normalized(&mut self) -> (User) {
-        println!("{:}", self.created);
-        return User {
+    pub fn to_normalized(&mut self) -> Result<User> {
+        return Ok(User {
             id: 0,
             username: self.name.clone(),
-            created_at: Utc.timestamp(self.created as i64, 0).format("%Y-%m-%d %H:%M").to_string(),
+            created_at: Utc.timestamp(self.created.unwrap_or(0 as f32) as i64, 0).format("%Y-%m-%d %H:%M").to_string(),
             followers: self.subreddit.subscribers,
             following: 0,
+            source_id: self.id.clone(),
             description: self.subreddit.public_description.clone()
-        } 
+        })
     }
 }
 
-#[derive(Serialize, Deserialize, Debug)]
+#[derive(Serialize, Deserialize, Debug, Default)]
+#[serde(default)]
 pub struct RedditUser {
     name: String,
-    created: f32,
+    created: Option<f32>,
+    id: String,
     subreddit: RedditUserSubreddit
 }
 
 
-#[derive(Serialize, Deserialize, Debug)]
+#[derive(Serialize, Deserialize, Debug, Default)]
 pub struct RedditUserSubreddit {
     subscribers: i32,
     public_description: String,

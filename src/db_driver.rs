@@ -1,13 +1,20 @@
 use std::io::prelude::*;
 use std::fs::{File, OpenOptions};
-use std::path::{PathBuf};
+use std::path::{PathBuf, Path};
 use std::io::{Cursor, Read, Write, SeekFrom, Result, Error, ErrorKind, BufReader};
 use crate::user::{User};
 use crate::post::{Post};
 extern crate bytecheck;
 extern crate rkyv;
 use serde::{Deserialize, Serialize};
-use byteorder::{ReadBytesExt};
+use byteorder::{ReadBytesExt, LittleEndian};
+extern crate btree;
+use btree::node_type::{KeyValuePair};
+use btree::btree::{BTreeBuilder};
+use btree::error::{Error as BTreeError};
+use std::result::{Result as StdResult};
+extern crate rsdb;
+
 
 
 pub struct Table {
@@ -21,6 +28,11 @@ pub struct Table {
 pub enum Row {
     User(User),
     Post(Post),
+}
+
+fn read_ne_i32(input: &[u8]) -> i32 {
+    let (int_bytes, rest) = input.split_at(std::mem::size_of::<i32>());
+    i32::from_ne_bytes(int_bytes.try_into().unwrap())
 }
 
 impl Row {
@@ -39,14 +51,15 @@ impl Row {
     }
 
     pub fn to_bytes(&self) -> Vec<u8> {
-            return match self {
-                Row::User(row) => row.to_bytes().into_inner().to_vec(),
-                Row::Post(row) => row.to_bytes().into_inner().to_vec(),
-                _ => panic!("well")
-            };
+        return match self {
+            Row::User(row) => row.to_bytes().into_inner().to_vec(),
+            Row::Post(row) => row.to_bytes().into_inner().to_vec(),
+            _ => panic!("well")
+        };
     }
 
 }
+
 
 impl Table {
     pub fn new(name: &str, path: &str, item_type: &str) -> Result<Self> {
@@ -65,12 +78,19 @@ impl Table {
         })
     }
 
-    pub fn insert<'a, 'b>(&'a mut self, row: &'b Row) -> Result<usize> {
+    pub fn insert<'a, 'b>(&'a mut self, row: &'b Row) -> Result<i32> {
         let mut file = Table::open(&self.name, &self.file_path, &self.item_type, true, true); 
         let bytes = row.to_bytes();
         println!("Writing {:} bytes", bytes.len());
-        let _ = file.write_all(&bytes);
-        return Ok(bytes.len());
+        file.write_all(&bytes)?;
+        file.seek(SeekFrom::End(0))?;
+        let position = (file.stream_position()? - bytes.len() as u64) as i32;
+        match row {
+            Row::User(user) => self.write_to_pk_index(&user.source_id, position),
+            Row::Post(post) => self.write_to_pk_index(&post.source_id, position),
+        };
+        println!("Start position: {:}", position);
+        return Ok(position as i32);
     }
 
     pub fn get(&mut self, index: i32) -> Result<Row> {
@@ -93,6 +113,42 @@ impl Table {
             reader.seek_relative(buffer_offset)?;
         }
         Err(Error::new(ErrorKind::Other, "not found."))
+    }
+
+    pub fn get_row_by_byte_position(&mut self, file_position: i32) -> Result<Row> {
+        let file = Table::open(&self.name, &self.file_path, &self.item_type, false, false); 
+        let mut buffer = [0u8;  2000];
+        let mut reader = BufReader::new(file);
+        reader.seek(SeekFrom::Start(file_position as u64))?;
+        reader.read(&mut buffer)?;
+        let (entry, _) = Row::from_bytes(&buffer, &self.item_type);
+        return Ok(entry)
+    }
+
+    pub fn get_row_by_source_id(&mut self, source_id: &str) -> Result<Row> {
+        let tree = rsdb::Config::default()
+          .path(Some(format!("./{:}_index.btree", self.item_type)))
+          .tree();
+        let source_bytes = source_id.clone().as_bytes();
+        let byte_position = tree.get(source_bytes).unwrap();
+        let mut byte_position = &byte_position[..]; 
+        let row_position = read_ne_i32(byte_position);
+        return self.get_row_by_byte_position(row_position);
+    }
+
+    pub fn write_to_pk_index(&mut self, source_id: &str, disk_position: i32) -> StdResult<(), BTreeError> {
+        // let tree = rsdb::Config::default()
+        //   .path(Some(format!("./{:}_index.btree", self.item_type)))
+        //   .tree();
+        // tree.set(source_id.as_bytes().to_vec(), disk_position.to_ne_bytes().to_vec());
+        return Ok(());
+    }
+
+    pub fn print_pk_index_tree(&mut self) -> StdResult<(), BTreeError> {
+        let tree = rsdb::Config::default()
+          .path(Some(format!("./{:}_index.btree", self.item_type)))
+          .tree();
+        return Ok(());
     }
 
     pub fn all(&mut self) -> Result<Vec<Row>> {

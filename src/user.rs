@@ -13,7 +13,8 @@ pub struct User {
     pub created_at: String,
     pub followers: i32,
     pub following: i32,
-    pub description: String
+    pub description: String,
+    pub source_id: String,
 } 
 
 impl Default for User {
@@ -25,6 +26,7 @@ impl Default for User {
             created_at: "".to_string(),
             description: "".to_string(),
             username: "".to_string(),
+            source_id: "".to_string(),
         }
     }
 }
@@ -34,12 +36,16 @@ impl User {
         return Ok(Some(post::Post::new("template comment".to_string(), "xuxa".to_string())));
     }
 
-    pub fn new(id: i32, username: &str, created_at: &str, followers: i32, following: i32, description: &str) -> User {
+    pub fn new(
+        id: i32, username: &str, created_at: &str, source_id: &str,
+        followers: i32, following: i32, description: &str
+    ) -> User {
         User {
             id,
             created_at: created_at.to_string(),
             description: description.to_string(),
             username: username.to_string(),
+            source_id: source_id.to_string(),
             followers,
             following,
         }
@@ -67,6 +73,11 @@ impl User {
         cursor.read_exact(&mut user_buffer).unwrap();
         let username = String::from_utf8(user_buffer).unwrap();
 
+        let source_id_len = cursor.read_u32::<LittleEndian>().unwrap();
+        let mut source_id_buffer = vec![0; source_id_len as usize];
+        cursor.read_exact(&mut source_id_buffer).unwrap();
+        let source_id = String::from_utf8(source_id_buffer).unwrap();
+
         return (User {
             id: user_id,
             followers,
@@ -74,6 +85,7 @@ impl User {
             created_at,
             description,
             username,
+            source_id,
         }, cursor.position());
     }
 
@@ -95,6 +107,10 @@ impl User {
         let user_bytes = self.username.as_bytes(); 
         buffer.write_u32::<LittleEndian>(user_bytes.len() as u32).unwrap();
         buffer.write_all(user_bytes).unwrap();
+
+        let source_id_bytes = self.source_id.as_bytes(); 
+        buffer.write_u32::<LittleEndian>(source_id_bytes.len() as u32).unwrap();
+        buffer.write_all(source_id_bytes).unwrap();
 
         return buffer;
     }

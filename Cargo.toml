@@ -6,6 +6,7 @@ edition = "2021"
 # See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
 
 [dependencies]
+btree = { git = "https://github.com/nimrodshn/btree"}
 clap = { version = "4.2.1", features = ["derive"] }
 reqwest = "0.11.16"
 rkyv = "0.7.41"
@@ -16,6 +17,7 @@ bytecheck = "0.7.0"
 chrono = "0.4.24"
 byteorder = "1.4.3"
 dialoguer = "0.10.4"
+rsdb = "0.12.1"
 
 [features]
 
